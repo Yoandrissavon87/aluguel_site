@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark background with rounded corners -->
+  <rect width="32" height="32" rx="7" fill="#0B0B0E"/>
+
+  <!-- Subtle teal glow spot -->
+  <circle cx="16" cy="14" r="14" fill="url(#glow)" opacity="0.35"/>
+
+  <!-- "96" text centered -->
+  <text
+    x="16"
+    y="21"
+    font-family="'Sora', 'Segoe UI', system-ui, sans-serif"
+    font-size="13"
+    font-weight="700"
+    fill="#00DDB8"
+    text-anchor="middle"
+    letter-spacing="-0.5"
+  >96</text>
+
+  <!-- Small pulse dot top-right -->
+  <circle cx="25" cy="7" r="3" fill="#00DDB8" opacity="0.9"/>
+
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00DDB8"/>
+      <stop offset="100%" stop-color="#0B0B0E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+</svg>

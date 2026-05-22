@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Layout, Typography, Button, Tabs, Table, Space, Modal, Form,
@@ -17,38 +17,46 @@ const { Title, Text } = Typography
 /* ── Auth guard ─────────────────────────────── */
 const INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes
 
+function isExpired() {
+  const ts = sessionStorage.getItem('admin_auth')
+  return !ts || Date.now() - Number(ts) > INACTIVITY_MS
+}
+
 function useAdminAuth() {
   const navigate = useNavigate()
+  const redirecting = useRef(false)
 
   useEffect(() => {
     function expire() {
+      if (redirecting.current) return
+      redirecting.current = true
       sessionStorage.removeItem('admin_auth')
       navigate('/walkyshow?expired=1', { replace: true })
     }
 
-    // Initial guard
-    const raw = sessionStorage.getItem('admin_auth')
-    if (!raw || Date.now() - Number(raw) > INACTIVITY_MS) {
-      expire()
-      return
-    }
+    // Guard on mount (handles page reload after idle)
+    if (isExpired()) { expire(); return }
 
     // Refresh timestamp on any user activity
     function touch() {
       sessionStorage.setItem('admin_auth', String(Date.now()))
     }
 
+    // Also check when tab becomes visible again (user switched tabs)
+    function onVisible() {
+      if (document.visibilityState === 'visible' && isExpired()) expire()
+    }
+
     const EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'] as const
     EVENTS.forEach(e => window.addEventListener(e, touch, { passive: true }))
+    document.addEventListener('visibilitychange', onVisible)
 
-    // Check every 30 seconds whether the user has gone idle
-    const timer = setInterval(() => {
-      const ts = sessionStorage.getItem('admin_auth')
-      if (!ts || Date.now() - Number(ts) > INACTIVITY_MS) expire()
-    }, 30_000)
+    // Periodic check every 15 seconds
+    const timer = setInterval(() => { if (isExpired()) expire() }, 15_000)
 
     return () => {
       EVENTS.forEach(e => window.removeEventListener(e, touch))
+      document.removeEventListener('visibilitychange', onVisible)
       clearInterval(timer)
     }
   }, [navigate])

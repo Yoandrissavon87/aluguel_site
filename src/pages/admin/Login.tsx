@@ -7,7 +7,7 @@ const { Title, Text } = Typography
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD as string
 
-export default function AdminLogin() {
+function LoginForm() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [loading, setLoading] = useState(false)
@@ -16,7 +16,7 @@ export default function AdminLogin() {
   const expired = params.get('expired') === '1'
 
   useEffect(() => {
-    if (expired) message.warning('Sessão expirada por inatividade. Faça login novamente.')
+    if (expired) message.warning('Sessão expirada por inatividade.')
   }, [expired, message])
 
   function handleSubmit({ password }: { password: string }) {
@@ -64,6 +64,7 @@ export default function AdminLogin() {
         {expired && (
           <Alert
             message="Sessão expirada por inatividade"
+            description="Faça login novamente para continuar."
             type="warning"
             showIcon
             style={{ marginBottom: 20 }}
@@ -88,5 +89,13 @@ export default function AdminLogin() {
         </Form>
       </Card>
     </div>
+  )
+}
+
+export default function AdminLogin() {
+  return (
+    <AntApp>
+      <LoginForm />
+    </AntApp>
   )
 }
