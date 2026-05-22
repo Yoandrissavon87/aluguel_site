@@ -2,24 +2,54 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Layout, Typography, Button, Tabs, Table, Space, Modal, Form,
-  Input, App as AntApp, Popconfirm, Card, Tag, Divider, Row, Col,
+  Input, InputNumber, App as AntApp, Popconfirm, Card, Tag, Divider, Row, Col,
 } from 'antd'
 import {
   LogoutOutlined, PlusOutlined, ArrowUpOutlined, ArrowDownOutlined,
   DeleteOutlined, EditOutlined, PictureOutlined, TagsOutlined,
-  PhoneOutlined, QuestionCircleOutlined,
+  PhoneOutlined, QuestionCircleOutlined, DollarOutlined, FontSizeOutlined,
 } from '@ant-design/icons'
-import { useSiteData, type Photo, type NearbyItem, type FaqItem } from '../../context/SiteContext'
+import { useSiteData, type Photo, type NearbyItem, type FaqItem, type Pricing, type SiteTexts } from '../../context/SiteContext'
 
 const { Header, Content } = Layout
 const { Title, Text } = Typography
 
 /* ── Auth guard ─────────────────────────────── */
+const INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes
+
 function useAdminAuth() {
   const navigate = useNavigate()
+
   useEffect(() => {
-    if (sessionStorage.getItem('admin_auth') !== '1') {
-      navigate('/walkyshow', { replace: true })
+    function expire() {
+      sessionStorage.removeItem('admin_auth')
+      navigate('/walkyshow?expired=1', { replace: true })
+    }
+
+    // Initial guard
+    const raw = sessionStorage.getItem('admin_auth')
+    if (!raw || Date.now() - Number(raw) > INACTIVITY_MS) {
+      expire()
+      return
+    }
+
+    // Refresh timestamp on any user activity
+    function touch() {
+      sessionStorage.setItem('admin_auth', String(Date.now()))
+    }
+
+    const EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'] as const
+    EVENTS.forEach(e => window.addEventListener(e, touch, { passive: true }))
+
+    // Check every 30 seconds whether the user has gone idle
+    const timer = setInterval(() => {
+      const ts = sessionStorage.getItem('admin_auth')
+      if (!ts || Date.now() - Number(ts) > INACTIVITY_MS) expire()
+    }, 30_000)
+
+    return () => {
+      EVENTS.forEach(e => window.removeEventListener(e, touch))
+      clearInterval(timer)
     }
   }, [navigate])
 }
@@ -500,6 +530,204 @@ function FaqManager() {
   )
 }
 
+/* ── Pricing manager ────────────────────────── */
+function PricingManager() {
+  const { data, updatePricing } = useSiteData()
+  const { message } = AntApp.useApp()
+  const [form] = Form.useForm<Pricing>()
+
+  useEffect(() => {
+    form.setFieldsValue(data.pricing)
+  }, [data.pricing, form])
+
+  function handleSave(values: Pricing) {
+    updatePricing(values)
+    message.success('Preços atualizados com sucesso.')
+  }
+
+  return (
+    <Card title="Preços" style={{ maxWidth: 560 }}>
+      <Form form={form} layout="vertical" onFinish={handleSave} onValuesChange={() => form.validateFields()}>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              name="rentWithGarage"
+              label="Aluguel com garagem (R$)"
+              rules={[{ required: true, message: 'Informe o valor' }]}
+            >
+              <InputNumber
+                prefix="R$"
+                min={0}
+                step={50}
+                style={{ width: '100%' }}
+                size="large"
+                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                parser={(v) => Number((v ?? '').replace(/\./g, '')) as unknown as 0}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              name="rentWithoutGarage"
+              label="Aluguel sem garagem (R$)"
+              rules={[{ required: true, message: 'Informe o valor' }]}
+            >
+              <InputNumber
+                prefix="R$"
+                min={0}
+                step={50}
+                style={{ width: '100%' }}
+                size="large"
+                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                parser={(v) => Number((v ?? '').replace(/\./g, '')) as unknown as 0}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Form.Item
+          name="condominio"
+          label="Condomínio (R$)"
+          rules={[{ required: true, message: 'Informe o valor' }]}
+          extra="Exibido separadamente do aluguel no site"
+        >
+          <InputNumber
+            prefix="R$"
+            min={0}
+            step={50}
+            style={{ width: '100%' }}
+            size="large"
+            formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+            parser={(v) => Number((v ?? '').replace(/\./g, '')) as unknown as 0}
+          />
+        </Form.Item>
+
+        <Divider />
+
+        <div style={{ marginBottom: 20 }}>
+          <Text type="secondary" style={{ fontSize: 13 }}>Prévia dos totais:</Text>
+          <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <Tag color="blue" style={{ fontSize: 13, padding: '4px 10px' }}>
+              Com garagem: R$ {(
+                (form.getFieldValue('rentWithGarage') ?? data.pricing.rentWithGarage) +
+                (form.getFieldValue('condominio')     ?? data.pricing.condominio)
+              ).toLocaleString('pt-BR')}/mês
+            </Tag>
+            <Tag color="purple" style={{ fontSize: 13, padding: '4px 10px' }}>
+              Sem garagem: R$ {(
+                (form.getFieldValue('rentWithoutGarage') ?? data.pricing.rentWithoutGarage) +
+                (form.getFieldValue('condominio')         ?? data.pricing.condominio)
+              ).toLocaleString('pt-BR')}/mês
+            </Tag>
+          </div>
+        </div>
+
+        <Button type="primary" htmlType="submit" size="large" icon={<DollarOutlined />}>
+          Salvar Preços
+        </Button>
+      </Form>
+    </Card>
+  )
+}
+
+/* ── Texts manager ──────────────────────────── */
+function TextsManager() {
+  const { data, updateTexts } = useSiteData()
+  const { message } = AntApp.useApp()
+  const [form] = Form.useForm<SiteTexts>()
+
+  useEffect(() => {
+    form.setFieldsValue(data.texts)
+  }, [data.texts, form])
+
+  function handleSave(values: SiteTexts) {
+    updateTexts(values)
+    message.success('Textos atualizados com sucesso.')
+  }
+
+  const field = (name: keyof SiteTexts, label: string, extra?: string, textarea?: boolean) => (
+    <Form.Item name={name} label={label} extra={extra}
+      rules={[{ required: true, message: `Informe ${label.toLowerCase()}` }]}
+    >
+      {textarea
+        ? <Input.TextArea autoSize={{ minRows: 2, maxRows: 6 }} />
+        : <Input />}
+    </Form.Item>
+  )
+
+  return (
+    <Form form={form} layout="vertical" onFinish={handleSave}>
+      <Row gutter={24}>
+
+        {/* ── Identidade ── */}
+        <Col xs={24} lg={12}>
+          <Card title="Identidade" size="small" style={{ marginBottom: 20 }}>
+            {field('brandName',     'Nome do apartamento', 'Ex: APTO 96')}
+            {field('brandBuilding', 'Nome do edifício',    'Ex: Dolores Duran')}
+          </Card>
+        </Col>
+
+        {/* ── Especificações ── */}
+        <Col xs={24} lg={12}>
+          <Card title="Especificações (barra de stats)" size="small" style={{ marginBottom: 20 }}>
+            <Row gutter={12}>
+              <Col span={12}>{field('statsQuartos',  'Quartos')}</Col>
+              <Col span={12}>{field('statsGaragem',  'Garagem')}</Col>
+              <Col span={12}>{field('statsArea',     'Área')}</Col>
+              <Col span={12}>{field('statsAndar',    'Andar')}</Col>
+              <Col span={12}>{field('statsImovel',   'Imóvel')}</Col>
+              <Col span={12}>{field('statsPortaria', 'Portaria')}</Col>
+            </Row>
+          </Card>
+        </Col>
+
+        {/* ── Hero ── */}
+        <Col xs={24} lg={12}>
+          <Card title="Seção Hero" size="small" style={{ marginBottom: 20 }}>
+            {field('heroBadge',   'Badge de status',   'Ex: Disponível para locação')}
+            {field('heroTitle',   'Título principal',  'Use Enter para quebrar linha', true)}
+            {field('heroAddress', 'Endereço no hero')}
+            {field('heroDocs',    'Nota de documentos')}
+          </Card>
+        </Col>
+
+        {/* ── Sobre ── */}
+        <Col xs={24} lg={12}>
+          <Card title="Seção Sobre" size="small" style={{ marginBottom: 20 }}>
+            {field('aboutHeadline', 'Título "Sobre"', 'Use Enter para quebrar linha', true)}
+            {field('aboutBody1',    'Parágrafo 1', undefined, true)}
+            {field('aboutBody2',    'Parágrafo 2', undefined, true)}
+          </Card>
+        </Col>
+
+        {/* ── Localização ── */}
+        <Col xs={24} lg={12}>
+          <Card title="Seção Localização" size="small" style={{ marginBottom: 20 }}>
+            {field('locationStreet',   'Rua e número')}
+            {field('locationBuilding', 'Edifício e andar')}
+            {field('locationCity',     'Cidade, estado e CEP')}
+          </Card>
+        </Col>
+
+        {/* ── CTA e Rodapé ── */}
+        <Col xs={24} lg={12}>
+          <Card title="CTA e Rodapé" size="small" style={{ marginBottom: 20 }}>
+            {field('ctaTitle',   'Título do CTA')}
+            {field('ctaSub',     'Subtítulo do CTA')}
+            {field('footerText', 'Texto do rodapé')}
+          </Card>
+        </Col>
+
+      </Row>
+
+      <Button type="primary" htmlType="submit" size="large" icon={<FontSizeOutlined />}>
+        Salvar Textos
+      </Button>
+    </Form>
+  )
+}
+
 /* ── Contact manager ────────────────────────── */
 function ContactManager() {
   const { data, updateContact } = useSiteData()
@@ -561,10 +789,15 @@ export default function AdminDashboard() {
 
   function logout() {
     sessionStorage.removeItem('admin_auth')
-    navigate('/walkyshow')
+    navigate('/walkyshow', { replace: true })
   }
 
   const tabItems = [
+    {
+      key: 'textos',
+      label: <span><FontSizeOutlined /> Textos</span>,
+      children: <TextsManager />,
+    },
     {
       key: 'fotos',
       label: <span><PictureOutlined /> Fotos</span>,
@@ -582,6 +815,11 @@ export default function AdminDashboard() {
           />
         </>
       ),
+    },
+    {
+      key: 'precos',
+      label: <span><DollarOutlined /> Preços</span>,
+      children: <PricingManager />,
     },
     {
       key: 'categorias',

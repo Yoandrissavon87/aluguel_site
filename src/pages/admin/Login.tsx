@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Form, Input, Button, Card, Typography, App as AntApp } from 'antd'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Form, Input, Button, Card, Typography, App as AntApp, Alert } from 'antd'
 import { LockOutlined } from '@ant-design/icons'
 
 const { Title, Text } = Typography
@@ -9,14 +9,21 @@ const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD as string
 
 export default function AdminLogin() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const [loading, setLoading] = useState(false)
   const { message } = AntApp.useApp()
+
+  const expired = params.get('expired') === '1'
+
+  useEffect(() => {
+    if (expired) message.warning('Sessão expirada por inatividade. Faça login novamente.')
+  }, [expired, message])
 
   function handleSubmit({ password }: { password: string }) {
     setLoading(true)
     setTimeout(() => {
       if (password === ADMIN_PASSWORD) {
-        sessionStorage.setItem('admin_auth', '1')
+        sessionStorage.setItem('admin_auth', String(Date.now()))
         navigate('/walkyshow/dashboard')
       } else {
         message.error('Senha incorreta. Tente novamente.')
@@ -54,6 +61,15 @@ export default function AdminLogin() {
           <Text type="secondary" style={{ fontSize: 13 }}>Apto 96 · Dolores Duran</Text>
         </div>
 
+        {expired && (
+          <Alert
+            message="Sessão expirada por inatividade"
+            type="warning"
+            showIcon
+            style={{ marginBottom: 20 }}
+          />
+        )}
+
         <Form layout="vertical" onFinish={handleSubmit} requiredMark={false}>
           <Form.Item
             name="password"
@@ -66,13 +82,7 @@ export default function AdminLogin() {
               autoFocus
             />
           </Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            size="large"
-            block
-            loading={loading}
-          >
+          <Button type="primary" htmlType="submit" size="large" block loading={loading}>
             Entrar
           </Button>
         </Form>

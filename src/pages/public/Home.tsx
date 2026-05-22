@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import {
   App as AntApp,
   Image,
   Button,
   Collapse,
+  Segmented,
 } from 'antd'
 import {
   PhoneOutlined,
@@ -13,30 +15,49 @@ import {
 import { BedDouble, Car, Ruler, Building2, Home, Lock } from 'lucide-react'
 import { useSiteData } from '../../context/SiteContext'
 
-const STATS = [
-  { icon: <BedDouble  size={22} />, value: '02',        label: 'Quartos'  },
-  { icon: <Car        size={22} />, value: '01',        label: 'Garagem'  },
-  { icon: <Ruler      size={22} />, value: '35 m²',     label: 'Área'     },
-  { icon: <Building2  size={22} />, value: '11º',       label: 'Andar'    },
-  { icon: <Home       size={22} />, value: 'Mobiliado', label: 'Imóvel'   },
-  { icon: <Lock       size={22} />, value: 'Remota',    label: 'Portaria' },
-]
+function fmt(n: number) {
+  return n.toLocaleString('pt-BR')
+}
 
-const CONTRACT_ROWS: [string, string][] = [
-  ['Aluguel',         'R$ 2.800/mês'],
-  ['Condomínio',      'Incluso'],
-  ['Contrato mínimo', '12 meses'],
-  ['Caução',          '1,5 mês'],
-  ['Reajuste',        'IPCA anual'],
-  ['IPTU',            'Por conta do inquilino'],
-]
+function multiline(text: string) {
+  return text.split('\n').map((line, i, arr) => (
+    <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+  ))
+}
 
 export default function HomePage() {
   const { data } = useSiteData()
-  const phone    = data.contactPhone
+  const [garage, setGarage] = useState<'com' | 'sem'>('com')
+
+  const t       = data.texts
+  const phone   = data.contactPhone
   const whatsapp = data.contactWhatsApp
-  const heroSrc  = data.apartmentPhotos[0]?.src ?? '/fotos/sala-vista-1.jpg'
-  const heroAlt  = data.apartmentPhotos[0]?.alt ?? 'Sala de estar'
+  const heroSrc = data.apartmentPhotos[0]?.src ?? '/fotos/sala-vista-1.jpg'
+  const heroAlt = data.apartmentPhotos[0]?.alt ?? 'Sala de estar'
+
+  const rent  = garage === 'com' ? data.pricing.rentWithGarage : data.pricing.rentWithoutGarage
+  const condo = data.pricing.condominio
+  const total = rent + condo
+
+  const stats = [
+    { icon: <BedDouble  size={22} />, value: t.statsQuartos,  label: 'Quartos'  },
+    { icon: <Car        size={22} />, value: t.statsGaragem,  label: 'Garagem'  },
+    { icon: <Ruler      size={22} />, value: t.statsArea,     label: 'Área'     },
+    { icon: <Building2  size={22} />, value: t.statsAndar,    label: 'Andar'    },
+    { icon: <Home       size={22} />, value: t.statsImovel,   label: 'Imóvel'   },
+    { icon: <Lock       size={22} />, value: t.statsPortaria, label: 'Portaria' },
+  ]
+
+  const contractRows: [string, string][] = [
+    ['Aluguel',         `R$ ${fmt(rent)}/mês`],
+    ['Condomínio',      `R$ ${fmt(condo)}/mês`],
+    ['Total',           `R$ ${fmt(total)}/mês`],
+    ['Garagem',         garage === 'com' ? 'Inclusa' : 'Não inclusa'],
+    ['Contrato mínimo', '12 meses'],
+    ['Caução',          '1,5 mês'],
+    ['Reajuste',        'IPCA anual'],
+    ['IPTU',            'Por conta do inquilino'],
+  ]
 
   return (
     <AntApp>
@@ -46,9 +67,9 @@ export default function HomePage() {
         <div className="hdr-inner">
           <div className="hdr-brand">
             <span className="brand-dot" aria-hidden="true" />
-            <span className="brand-name">APTO 96</span>
+            <span className="brand-name">{t.brandName}</span>
             <span className="brand-sep" aria-hidden="true">·</span>
-            <span className="brand-sub">Dolores Duran</span>
+            <span className="brand-sub">{t.brandBuilding}</span>
           </div>
           <nav className="hdr-nav" aria-label="Navegação principal">
             <a className="nav-lnk" href="#galeria">Galeria</a>
@@ -74,57 +95,63 @@ export default function HomePage() {
           <div className="hero-content">
             <span className="badge-disponivel" role="status">
               <span className="badge-pulse" aria-hidden="true" />
-              Disponível para locação
+              {t.heroBadge}
             </span>
 
-            <h1 className="hero-h1">
-              Apartamento<br />Mobiliado<br />no Centro<br />de Curitiba
-            </h1>
+            <h1 className="hero-h1">{multiline(t.heroTitle)}</h1>
 
             <address className="hero-addr">
               <EnvironmentOutlined aria-hidden="true" />
-              <span>Rua André de Barros, 626 · 11º andar · Centro</span>
+              <span>{t.heroAddress}</span>
             </address>
 
             <div className="hero-price">
               <span className="hp-eyebrow">Aluguel mensal</span>
+
+              <Segmented
+                options={[
+                  { label: '🚗 Com Garagem', value: 'com' },
+                  { label: 'Sem Garagem',    value: 'sem' },
+                ]}
+                value={garage}
+                onChange={(v) => setGarage(v as 'com' | 'sem')}
+                block
+                className="garage-seg"
+              />
+
               <div className="hp-value-row">
-                <span className="hp-amount">R$ 2.800</span>
+                <span className="hp-amount">R$ {fmt(rent)}</span>
                 <span className="hp-period">/mês</span>
               </div>
-              <span className="hp-note">condomínio incluso · 1 vaga de garagem</span>
+
+              <div className="hp-breakdown">
+                <span>Condomínio <strong>R$ {fmt(condo)}/mês</strong></span>
+                <span className="hp-breakdown-sep">·</span>
+                <span>Total <strong>R$ {fmt(total)}/mês</strong></span>
+              </div>
             </div>
 
             <div className="hero-btns">
-              <Button
-                type="primary"
-                size="large"
-                block
-                icon={<PhoneOutlined />}
-                href={`tel:+${phone}`}
-              >
+              <Button type="primary" size="large" block icon={<PhoneOutlined />} href={`tel:+${phone}`}>
                 Agendar Visita
               </Button>
               <Button
-                size="large"
-                block
-                icon={<WhatsAppOutlined />}
+                size="large" block icon={<WhatsAppOutlined />}
                 href={`https://wa.me/${whatsapp}`}
-                target="_blank"
-                rel="noopener noreferrer"
+                target="_blank" rel="noopener noreferrer"
                 className="btn-wa"
               >
                 WhatsApp
               </Button>
             </div>
-            <p className="hero-docs">Docs exigidos: RG · CPF · Comprovante de renda</p>
+            <p className="hero-docs">{t.heroDocs}</p>
           </div>
         </div>
       </section>
 
       {/* ── KEY SPECS ───────────────────────────── */}
       <div className="keyspecs" role="list" aria-label="Resumo das características">
-        {STATS.map((s) => (
+        {stats.map((s) => (
           <div key={s.label} className="ks-item" role="listitem">
             <span className="ks-icon" aria-hidden="true">{s.icon}</span>
             <span className="ks-val">{s.value}</span>
@@ -144,8 +171,7 @@ export default function HomePage() {
             {data.apartmentPhotos.map((p) => (
               <div key={p.src} className="g-item">
                 <Image
-                  src={p.src}
-                  alt={p.alt}
+                  src={p.src} alt={p.alt}
                   preview={{ mask: p.label }}
                   wrapperStyle={{ width: '100%', height: '100%', display: 'block' }}
                 />
@@ -161,28 +187,18 @@ export default function HomePage() {
         <div className="container about-grid">
           <div className="about-left">
             <span className="eyebrow">Sobre</span>
-            <h2 className="about-h2">
-              35 m² bem<br />distribuídos no<br />coração da cidade.
-            </h2>
+            <h2 className="about-h2">{multiline(t.aboutHeadline)}</h2>
           </div>
           <div className="about-right">
-            <p className="body-text">
-              Apartamento <strong>totalmente mobiliado</strong> no 11º andar do Edifício
-              Dolores Duran, Centro de Curitiba. O imóvel oferece 2 quartos, sala de TV
-              integrada com sala de jantar, cozinha integrada à área de serviço, portaria
-              remota e <strong>1 vaga de garagem</strong> — tudo com excelente iluminação
-              natural.
-            </p>
-            <p className="body-text">
-              Próximo ao Shopping Estação, com acesso imediato a transporte público,
-              restaurantes, academias e toda a infraestrutura do centro. Aceita pets de
-              pequeno porte.
-            </p>
+            <p className="body-text">{t.aboutBody1}</p>
+            <p className="body-text">{t.aboutBody2}</p>
             <div className="contract-table">
-              {CONTRACT_ROWS.map(([label, value]) => (
+              {contractRows.map(([label, value]) => (
                 <div key={label} className="ct-row">
                   <span className="ct-label">{label}</span>
-                  <span className="ct-value">{value}</span>
+                  <span className="ct-value"
+                    style={label === 'Total' ? { color: 'var(--gold)', fontWeight: 700 } : undefined}
+                  >{value}</span>
                 </div>
               ))}
             </div>
@@ -210,15 +226,14 @@ export default function HomePage() {
       <section className="sect sect--alt" id="edificio" aria-label="Infraestrutura do edifício">
         <div className="container">
           <span className="eyebrow">Edifício</span>
-          <h2 className="sect-h2">Infraestrutura Dolores Duran</h2>
+          <h2 className="sect-h2">Infraestrutura {t.brandBuilding}</h2>
           <Image.PreviewGroup>
             <div className="bld-grid">
               {data.buildingPhotos.map((a) => (
                 <div key={a.src} className="bld-item">
                   <div className="bld-photo">
                     <Image
-                      src={a.src}
-                      alt={a.alt}
+                      src={a.src} alt={a.alt}
                       preview={{ mask: 'Ver foto' }}
                       wrapperStyle={{ width: '100%', height: '100%', display: 'block' }}
                     />
@@ -242,9 +257,9 @@ export default function HomePage() {
             <div className="loc-addr">
               <EnvironmentOutlined className="loc-ico" aria-hidden="true" />
               <div>
-                <p className="loc-street">Rua André de Barros, nº 626 — Apto 96</p>
-                <p className="loc-detail">Edifício Dolores Duran · 11º andar</p>
-                <p className="loc-detail">Centro · Curitiba – PR · CEP 80010-080</p>
+                <p className="loc-street">{t.locationStreet}</p>
+                <p className="loc-detail">{t.locationBuilding}</p>
+                <p className="loc-detail">{t.locationCity}</p>
               </div>
             </div>
             <div className="loc-divider" aria-hidden="true" />
@@ -279,24 +294,17 @@ export default function HomePage() {
       <section className="cta-sect" id="contato" aria-label="Entre em contato">
         <div className="container cta-inner">
           <div className="cta-text">
-            <h2 className="cta-h2">Pronto para conhecer?</h2>
-            <p className="cta-sub">Agende uma visita ou fale com a gente agora.</p>
+            <h2 className="cta-h2">{t.ctaTitle}</h2>
+            <p className="cta-sub">{t.ctaSub}</p>
           </div>
           <div className="cta-btns">
-            <Button
-              type="primary"
-              size="large"
-              icon={<PhoneOutlined />}
-              href={`tel:+${phone}`}
-            >
+            <Button type="primary" size="large" icon={<PhoneOutlined />} href={`tel:+${phone}`}>
               Ligar Agora
             </Button>
             <Button
-              size="large"
-              icon={<WhatsAppOutlined />}
+              size="large" icon={<WhatsAppOutlined />}
               href={`https://wa.me/${whatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer"
               className="btn-wa"
             >
               WhatsApp
@@ -307,15 +315,14 @@ export default function HomePage() {
 
       {/* ── FOOTER ──────────────────────────────── */}
       <footer className="ftr">
-        <p>© 2025 · Apto 96 · Edifício Dolores Duran · Rua André de Barros, 626 · Centro, Curitiba/PR</p>
+        <p>{t.footerText}</p>
       </footer>
 
       {/* ── FAB WHATSAPP ─────────────────────────── */}
       <a
         className="fab-wa"
         href={`https://wa.me/${whatsapp}`}
-        target="_blank"
-        rel="noopener noreferrer"
+        target="_blank" rel="noopener noreferrer"
         aria-label="Fale pelo WhatsApp"
       >
         <WhatsAppOutlined aria-hidden="true" />

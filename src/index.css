@@ -295,6 +295,43 @@ img { display: block; }
   margin-top: 5px;
 }
 
+/* Garage segmented toggle */
+.garage-seg.ant-segmented {
+  margin: 0.85rem 0 1.1rem !important;
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.garage-seg .ant-segmented-item-selected {
+  background: var(--accent) !important;
+  color: #0B0B0E !important;
+  font-weight: 700 !important;
+}
+
+.garage-seg .ant-segmented-item:not(.ant-segmented-item-selected) {
+  color: var(--muted) !important;
+}
+
+/* Price breakdown line */
+.hp-breakdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+
+.hp-breakdown strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hp-breakdown-sep {
+  color: var(--border);
+}
+
 /* CTA buttons */
 .hero-btns {
   display: flex;

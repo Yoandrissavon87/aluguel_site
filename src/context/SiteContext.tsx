@@ -17,12 +17,44 @@ export interface FaqItem {
   answer: string
 }
 
+export interface Pricing {
+  rentWithGarage: number
+  rentWithoutGarage: number
+  condominio: number
+}
+
+export interface SiteTexts {
+  brandName: string
+  brandBuilding: string
+  heroBadge: string
+  heroTitle: string
+  heroAddress: string
+  heroDocs: string
+  statsQuartos: string
+  statsGaragem: string
+  statsArea: string
+  statsAndar: string
+  statsImovel: string
+  statsPortaria: string
+  aboutHeadline: string
+  aboutBody1: string
+  aboutBody2: string
+  locationStreet: string
+  locationBuilding: string
+  locationCity: string
+  ctaTitle: string
+  ctaSub: string
+  footerText: string
+}
+
 export interface SiteData {
   features: string[]
   apartmentPhotos: Photo[]
   buildingPhotos: Photo[]
   nearbyItems: NearbyItem[]
   faqItems: FaqItem[]
+  pricing: Pricing
+  texts: SiteTexts
   contactPhone: string
   contactWhatsApp: string
 }
@@ -34,6 +66,8 @@ interface SiteContextValue {
   updateBuildingPhotos: (photos: Photo[]) => void
   updateNearbyItems: (items: NearbyItem[]) => void
   updateFaqItems: (items: FaqItem[]) => void
+  updatePricing: (pricing: Pricing) => void
+  updateTexts: (texts: SiteTexts) => void
   updateContact: (phone: string, whatsapp: string) => void
 }
 
@@ -96,6 +130,34 @@ const DEFAULT_DATA: SiteData = {
     { key: '9', label: '09 · Quais documentos são necessários para alugar?',
       answer: 'RG, CPF e comprovante de renda.' },
   ],
+  pricing: {
+    rentWithGarage:    2800,
+    rentWithoutGarage: 2400,
+    condominio:         450,
+  },
+  texts: {
+    brandName:       'APTO 96',
+    brandBuilding:   'Dolores Duran',
+    heroBadge:       'Disponível para locação',
+    heroTitle:       'Apartamento\nMobiliado\nno Centro\nde Curitiba',
+    heroAddress:     'Rua André de Barros, 626 · 11º andar · Centro',
+    heroDocs:        'Docs exigidos: RG · CPF · Comprovante de renda',
+    statsQuartos:    '02',
+    statsGaragem:    '01',
+    statsArea:       '35 m²',
+    statsAndar:      '11º',
+    statsImovel:     'Mobiliado',
+    statsPortaria:   'Remota',
+    aboutHeadline:   '35 m² bem\ndistribuídos no\ncoração da cidade.',
+    aboutBody1:      'Apartamento totalmente mobiliado no 11º andar do Edifício Dolores Duran, Centro de Curitiba. O imóvel oferece 2 quartos, sala de TV integrada com sala de jantar, cozinha integrada à área de serviço, portaria remota e 1 vaga de garagem — tudo com excelente iluminação natural.',
+    aboutBody2:      'Próximo ao Shopping Estação, com acesso imediato a transporte público, restaurantes, academias e toda a infraestrutura do centro. Aceita pets de pequeno porte.',
+    locationStreet:  'Rua André de Barros, nº 626 — Apto 96',
+    locationBuilding:'Edifício Dolores Duran · 11º andar',
+    locationCity:    'Centro · Curitiba – PR · CEP 80010-080',
+    ctaTitle:        'Pronto para conhecer?',
+    ctaSub:          'Agende uma visita ou fale com a gente agora.',
+    footerText:      '© 2025 · Apto 96 · Edifício Dolores Duran · Rua André de Barros, 626 · Centro, Curitiba/PR',
+  },
   contactPhone: '5541988888888',
   contactWhatsApp: '5541988888888',
 }
@@ -127,8 +189,10 @@ export function SiteProvider({ children }: { children: ReactNode }) {
       updateApartmentPhotos: (apartmentPhotos) => save({ ...data, apartmentPhotos }),
       updateBuildingPhotos:  (buildingPhotos)  => save({ ...data, buildingPhotos }),
       updateNearbyItems:     (nearbyItems)     => save({ ...data, nearbyItems }),
-      updateFaqItems:        (faqItems)        => save({ ...data, faqItems }),
-      updateContact:         (phone, whatsapp) => save({ ...data, contactPhone: phone, contactWhatsApp: whatsapp }),
+      updateFaqItems:  (faqItems) => save({ ...data, faqItems }),
+      updatePricing:   (pricing) => save({ ...data, pricing }),
+      updateTexts:     (texts)   => save({ ...data, texts }),
+      updateContact:   (phone, whatsapp) => save({ ...data, contactPhone: phone, contactWhatsApp: whatsapp }),
     }}>
       {children}
     </SiteContext.Provider>
