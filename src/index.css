@@ -447,22 +447,16 @@ img { display: block; }
 }
 
 /* ════════════════════════════════════════════
-   GALLERY  –  asymmetric editorial grid
+   GALLERY  –  uniform grid
    ════════════════════════════════════════════ */
 .gallery {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  grid-template-rows: 270px 270px 230px;
-  gap: 4px;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 240px;
+  gap: 6px;
   padding: 0 2rem;
   max-width: 1160px;
   margin: 0 auto;
-}
-
-/* Photo 1: tall featured (left, rows 1–2) */
-.gallery > .g-item:nth-child(1) {
-  grid-column: 1;
-  grid-row: 1 / 3;
 }
 
 .g-item {
@@ -511,6 +505,46 @@ img { display: block; }
 }
 
 .g-item:hover .g-lbl { opacity: 1; }
+
+/* Expand icon — always visible corner hint */
+.g-expand {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.25s, background 0.2s;
+  pointer-events: none;
+  z-index: 2;
+}
+.g-item:hover .g-expand {
+  opacity: 1;
+}
+
+/* Preview mask content */
+.g-preview-mask {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.g-preview-mask .g-zoom-icon {
+  font-size: 22px;
+}
 
 /* ════════════════════════════════════════════
    ABOUT  –  editorial two-column
@@ -876,8 +910,8 @@ img { display: block; }
    ════════════════════════════════════════════ */
 @media (max-width: 1100px) {
   .gallery {
-    grid-template-columns: 2fr 1fr 1fr;
-    grid-template-rows: 220px 220px 200px;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 190px;
     padding: 0 1rem;
   }
 
@@ -943,15 +977,9 @@ img { display: block; }
   /* gallery collapses to 2-col */
   .gallery {
     grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: none;
     grid-auto-rows: 160px;
     padding: 0 0.75rem;
     gap: 3px;
-  }
-
-  .gallery > .g-item:nth-child(1) {
-    grid-column: 1 / 3;
-    grid-row: auto;
   }
 
   /* sections */

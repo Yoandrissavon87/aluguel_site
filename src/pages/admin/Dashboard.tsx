@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import {
   Layout, Typography, Button, Tabs, Table, Space, Modal, Form,
   Input, InputNumber, App as AntApp, Popconfirm, Card, Tag, Divider, Row, Col,
+  Upload, Switch, Segmented,
 } from 'antd'
 import {
   LogoutOutlined, PlusOutlined, ArrowUpOutlined, ArrowDownOutlined,
   DeleteOutlined, EditOutlined, PictureOutlined, TagsOutlined,
   PhoneOutlined, QuestionCircleOutlined, DollarOutlined, FontSizeOutlined,
+  UploadOutlined, WifiOutlined,
 } from '@ant-design/icons'
 import { useSiteData, type Photo, type NearbyItem, type FaqItem, type Pricing, type SiteTexts } from '../../context/SiteContext'
 
@@ -76,6 +78,8 @@ function PhotoManager({
   const [modalOpen, setModalOpen] = useState(false)
   const [editIndex, setEditIndex] = useState<number | null>(null)
   const [form] = Form.useForm<Photo>()
+  const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file')
+  const [previewSrc, setPreviewSrc] = useState<string>('')
 
   function move(index: number, dir: -1 | 1) {
     const next = [...photos]
@@ -87,17 +91,33 @@ function PhotoManager({
 
   function openAdd() {
     setEditIndex(null)
+    setUploadMode('file')
+    setPreviewSrc('')
     form.resetFields()
     setModalOpen(true)
   }
 
   function openEdit(index: number) {
     setEditIndex(index)
-    form.setFieldsValue(photos[index])
+    const photo = photos[index]
+    const isDataUrl = photo.src.startsWith('data:')
+    setUploadMode(isDataUrl ? 'file' : 'url')
+    setPreviewSrc(isDataUrl ? photo.src : '')
+    form.setFieldsValue(photo)
     setModalOpen(true)
   }
 
+  function switchMode(mode: 'file' | 'url') {
+    setUploadMode(mode)
+    setPreviewSrc('')
+    form.setFieldValue('src', '')
+  }
+
   function handleSave(values: Photo) {
+    if (!values.src?.trim()) {
+      message.error(uploadMode === 'file' ? 'Selecione uma imagem.' : 'Informe a URL da imagem.')
+      return
+    }
     const next = [...photos]
     if (editIndex !== null) {
       next[editIndex] = values
@@ -128,7 +148,16 @@ function PhotoManager({
         />
       ),
     },
-    { title: 'URL / Caminho', dataIndex: 'src', key: 'src', ellipsis: true },
+    {
+      title: 'Origem',
+      dataIndex: 'src',
+      key: 'src',
+      ellipsis: true,
+      render: (src: string) =>
+        src.startsWith('data:')
+          ? <Tag color="blue">Arquivo</Tag>
+          : <span style={{ fontSize: 12, color: '#888' }}>{src}</span>,
+    },
     { title: 'Alt', dataIndex: 'alt', key: 'alt', ellipsis: true },
     { title: 'Legenda', dataIndex: 'label', key: 'label' },
     {
@@ -170,9 +199,67 @@ function PhotoManager({
         destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: 16 }}>
-          <Form.Item name="src" label="URL ou caminho da foto" rules={[{ required: true, message: 'Informe o caminho da foto' }]}>
+
+          <Form.Item label="Origem da foto" style={{ marginBottom: 16 }}>
+            <Segmented
+              block
+              options={[
+                { label: <><UploadOutlined /> Arquivo</>, value: 'file' },
+                { label: 'URL / Caminho', value: 'url' },
+              ]}
+              value={uploadMode}
+              onChange={(v) => switchMode(v as 'file' | 'url')}
+            />
+          </Form.Item>
+
+          {uploadMode === 'file' && (
+            <Form.Item label="Imagem" style={{ marginBottom: 16 }}>
+              <Upload.Dragger
+                accept="image/*"
+                multiple={false}
+                showUploadList={false}
+                beforeUpload={(file) => {
+                  const reader = new FileReader()
+                  reader.onload = (e) => {
+                    const base64 = e.target?.result as string
+                    form.setFieldValue('src', base64)
+                    setPreviewSrc(base64)
+                  }
+                  reader.readAsDataURL(file)
+                  return false
+                }}
+              >
+                {previewSrc ? (
+                  <div style={{ padding: 8 }}>
+                    <img
+                      src={previewSrc}
+                      alt="prévia"
+                      style={{ maxHeight: 140, maxWidth: '100%', borderRadius: 6, objectFit: 'contain' }}
+                    />
+                    <p style={{ marginTop: 8, color: '#888', fontSize: 12 }}>Clique ou arraste para substituir</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="ant-upload-drag-icon"><PictureOutlined style={{ fontSize: 32, color: '#aaa' }} /></p>
+                    <p className="ant-upload-text">Clique ou arraste uma imagem aqui</p>
+                    <p className="ant-upload-hint">PNG · JPG · WEBP · GIF</p>
+                  </>
+                )}
+              </Upload.Dragger>
+            </Form.Item>
+          )}
+
+          {/* Sempre montado para que o form leia o valor em onFinish;
+              oculto no modo arquivo (preenchido via FileReader) */}
+          <Form.Item
+            name="src"
+            label="URL ou caminho da foto"
+            hidden={uploadMode === 'file'}
+            style={{ marginBottom: 16 }}
+          >
             <Input placeholder="Ex: /fotos/sala.jpg ou https://..." />
           </Form.Item>
+
           <Form.Item name="alt" label="Texto alternativo (acessibilidade)" rules={[{ required: true, message: 'Informe o texto alternativo' }]}>
             <Input placeholder="Ex: Sala de estar – vista 1" />
           </Form.Item>
@@ -609,6 +696,15 @@ function PricingManager() {
             formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
             parser={(v) => Number((v ?? '').replace(/\./g, '')) as unknown as 0}
           />
+        </Form.Item>
+
+        <Form.Item
+          name="internetIncluido"
+          label={<><WifiOutlined /> Internet inclusa no condomínio</>}
+          valuePropName="checked"
+          extra="Quando ativado, exibe 'Internet inclusa' junto ao valor do condomínio no site"
+        >
+          <Switch checkedChildren="Sim" unCheckedChildren="Não" />
         </Form.Item>
 
         <Divider />

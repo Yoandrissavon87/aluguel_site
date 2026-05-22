@@ -21,6 +21,7 @@ export interface Pricing {
   rentWithGarage: number
   rentWithoutGarage: number
   condominio: number
+  internetIncluido: boolean
 }
 
 export interface SiteTexts {
@@ -134,6 +135,7 @@ const DEFAULT_DATA: SiteData = {
     rentWithGarage:    2800,
     rentWithoutGarage: 2400,
     condominio:         450,
+    internetIncluido:  true,
   },
   texts: {
     brandName:       'APTO 96',
@@ -167,7 +169,14 @@ const STORAGE_KEY = 'aluguel_site_data'
 function loadData(): SiteData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return { ...DEFAULT_DATA, ...JSON.parse(raw) }
+    if (raw) {
+      const parsed: Partial<SiteData> = JSON.parse(raw)
+      return {
+        ...DEFAULT_DATA,
+        ...parsed,
+        pricing: { ...DEFAULT_DATA.pricing, ...parsed.pricing },
+      }
+    }
   } catch { /* ignore */ }
   return DEFAULT_DATA
 }

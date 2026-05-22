@@ -11,6 +11,7 @@ import {
   WhatsAppOutlined,
   CheckOutlined,
   EnvironmentOutlined,
+  ZoomInOutlined,
 } from '@ant-design/icons'
 import { BedDouble, Car, Ruler, Building2, Home, Lock } from 'lucide-react'
 import { useSiteData } from '../../context/SiteContext'
@@ -48,9 +49,11 @@ export default function HomePage() {
     { icon: <Lock       size={22} />, value: t.statsPortaria, label: 'Portaria' },
   ]
 
+  const internetIncluido = data.pricing.internetIncluido
+
   const contractRows: [string, string][] = [
     ['Aluguel',         `R$ ${fmt(rent)}/mês`],
-    ['Condomínio',      `R$ ${fmt(condo)}/mês`],
+    ['Condomínio',      `R$ ${fmt(condo)}/mês${internetIncluido ? ' · Internet inclusa' : ''}`],
     ['Total',           `R$ ${fmt(total)}/mês`],
     ['Garagem',         garage === 'com' ? 'Inclusa' : 'Não inclusa'],
     ['Contrato mínimo', '12 meses'],
@@ -125,7 +128,10 @@ export default function HomePage() {
               </div>
 
               <div className="hp-breakdown">
-                <span>Condomínio <strong>R$ {fmt(condo)}/mês</strong></span>
+                <span>
+                  Condomínio <strong>R$ {fmt(condo)}/mês</strong>
+                  {internetIncluido && <span className="hp-internet"> · Internet inclusa</span>}
+                </span>
                 <span className="hp-breakdown-sep">·</span>
                 <span>Total <strong>R$ {fmt(total)}/mês</strong></span>
               </div>
@@ -172,10 +178,18 @@ export default function HomePage() {
               <div key={p.src} className="g-item">
                 <Image
                   src={p.src} alt={p.alt}
-                  preview={{ mask: p.label }}
+                  preview={{
+                    mask: (
+                      <div className="g-preview-mask">
+                        <ZoomInOutlined className="g-zoom-icon" />
+                        <span>{p.label}</span>
+                      </div>
+                    ),
+                  }}
                   wrapperStyle={{ width: '100%', height: '100%', display: 'block' }}
                 />
                 <span className="g-lbl" aria-hidden="true">{p.label}</span>
+                <span className="g-expand" aria-hidden="true"><ZoomInOutlined /></span>
               </div>
             ))}
           </div>
