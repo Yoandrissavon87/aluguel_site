@@ -1,6 +1,5 @@
 import express from 'express'
 import multer from 'multer'
-import cors from 'cors'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
@@ -18,22 +17,14 @@ const PHOTOS_DIR = path.join(__dirname, 'public', 'fotos')
 fs.mkdirSync(DATA_DIR,   { recursive: true })
 fs.mkdirSync(PHOTOS_DIR, { recursive: true })
 
-app.use(cors())
+// Nginx serve os arquivos estáticos; Express só precisa do JSON
 app.use(express.json({ limit: '10mb' }))
 
-// Fotos dinâmicas (uploads) — servidas antes do dist/ para não conflitar
-app.use('/fotos', express.static(PHOTOS_DIR))
-
-// Em produção, servir o build do React
-app.use(express.static(path.join(__dirname, 'dist')))
-
-// Upload: salva em public/fotos/
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, PHOTOS_DIR),
   filename:    (_req,  file, cb) => {
     const ext  = path.extname(file.originalname).toLowerCase()
-    const name = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
-    cb(null, name)
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`)
   },
 })
 const upload = multer({
@@ -47,7 +38,6 @@ const upload = multer({
 
 // ── API ───────────────────────────────────────────────────────────
 
-// Retorna os dados salvos (null se ainda não existir)
 app.get('/api/data', (_req, res) => {
   try {
     if (fs.existsSync(DATA_FILE)) {
@@ -60,7 +50,6 @@ app.get('/api/data', (_req, res) => {
   }
 })
 
-// Salva todos os dados do site
 app.post('/api/data', (req, res) => {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(req.body, null, 2), 'utf-8')
@@ -70,22 +59,12 @@ app.post('/api/data', (req, res) => {
   }
 })
 
-// Upload de foto → salva em public/fotos/ e retorna o caminho
 app.post('/api/upload', upload.single('photo'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo recebido' })
   res.json({ src: `/fotos/${req.file.filename}` })
 })
 
-// Fallback SPA (produção)
-app.get('*', (_req, res) => {
-  const index = path.join(__dirname, 'dist', 'index.html')
-  if (fs.existsSync(index)) {
-    res.sendFile(index)
-  } else {
-    res.status(404).send('Build não encontrado. Execute: npm run build')
-  }
-})
-
-app.listen(PORT, () => {
-  console.log(`✅  Servidor rodando em http://localhost:${PORT}`)
+// Escuta apenas em loopback — Nginx é o único que acessa
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`✅  API rodando em http://127.0.0.1:${PORT}`)
 })
