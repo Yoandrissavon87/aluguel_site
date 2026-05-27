@@ -80,6 +80,7 @@ function PhotoManager({
   const [form] = Form.useForm<Photo>()
   const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file')
   const [previewSrc, setPreviewSrc] = useState<string>('')
+  const [uploading, setUploading] = useState(false)
 
   function move(index: number, dir: -1 | 1) {
     const next = [...photos]
@@ -100,9 +101,8 @@ function PhotoManager({
   function openEdit(index: number) {
     setEditIndex(index)
     const photo = photos[index]
-    const isDataUrl = photo.src.startsWith('data:')
-    setUploadMode(isDataUrl ? 'file' : 'url')
-    setPreviewSrc(isDataUrl ? photo.src : '')
+    setUploadMode('url')
+    setPreviewSrc(photo.src)
     form.setFieldsValue(photo)
     setModalOpen(true)
   }
@@ -149,14 +149,13 @@ function PhotoManager({
       ),
     },
     {
-      title: 'Origem',
+      title: 'Caminho',
       dataIndex: 'src',
       key: 'src',
       ellipsis: true,
-      render: (src: string) =>
-        src.startsWith('data:')
-          ? <Tag color="blue">Arquivo</Tag>
-          : <span style={{ fontSize: 12, color: '#888' }}>{src}</span>,
+      render: (src: string) => (
+        <span style={{ fontSize: 12, color: '#888' }}>{src}</span>
+      ),
     },
     { title: 'Alt', dataIndex: 'alt', key: 'alt', ellipsis: true },
     { title: 'Legenda', dataIndex: 'label', key: 'label' },
@@ -184,9 +183,9 @@ function PhotoManager({
       style={{ marginBottom: 24 }}
     >
       <Table
-        dataSource={photos}
+        dataSource={photos.map((p, i) => ({ ...p, _key: i }))}
         columns={columns}
-        rowKey="src"
+        rowKey="_key"
         pagination={false}
         size="small"
       />
@@ -218,18 +217,31 @@ function PhotoManager({
                 accept="image/*"
                 multiple={false}
                 showUploadList={false}
+                disabled={uploading}
                 beforeUpload={(file) => {
-                  const reader = new FileReader()
-                  reader.onload = (e) => {
-                    const base64 = e.target?.result as string
-                    form.setFieldValue('src', base64)
-                    setPreviewSrc(base64)
-                  }
-                  reader.readAsDataURL(file)
+                  setUploading(true)
+                  const formData = new FormData()
+                  formData.append('photo', file)
+                  fetch('/api/upload', { method: 'POST', body: formData })
+                    .then(r => r.json())
+                    .then((json: { src?: string; error?: string }) => {
+                      if (json.src) {
+                        form.setFieldValue('src', json.src)
+                        setPreviewSrc(json.src)
+                      } else {
+                        message.error(json.error ?? 'Erro ao fazer upload.')
+                      }
+                    })
+                    .catch(() => message.error('Erro ao conectar ao servidor.'))
+                    .finally(() => setUploading(false))
                   return false
                 }}
               >
-                {previewSrc ? (
+                {uploading ? (
+                  <div style={{ padding: 24 }}>
+                    <p className="ant-upload-text">Enviando foto...</p>
+                  </div>
+                ) : previewSrc ? (
                   <div style={{ padding: 8 }}>
                     <img
                       src={previewSrc}
@@ -250,7 +262,7 @@ function PhotoManager({
           )}
 
           {/* Sempre montado para que o form leia o valor em onFinish;
-              oculto no modo arquivo (preenchido via FileReader) */}
+              no modo arquivo o valor é preenchido via fetch ao servidor */}
           <Form.Item
             name="src"
             label="URL ou caminho da foto"
@@ -269,7 +281,7 @@ function PhotoManager({
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>
               <Button onClick={() => setModalOpen(false)}>Cancelar</Button>
-              <Button type="primary" htmlType="submit">Salvar</Button>
+              <Button type="primary" htmlType="submit" disabled={uploading}>Salvar</Button>
             </Space>
           </Form.Item>
         </Form>

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 export interface Photo {
   src: string
@@ -164,31 +164,44 @@ const DEFAULT_DATA: SiteData = {
   contactWhatsApp: '5541988888888',
 }
 
-const STORAGE_KEY = 'aluguel_site_data'
+function mergeWithDefaults(saved: Partial<SiteData>): SiteData {
+  return {
+    ...DEFAULT_DATA,
+    ...saved,
+    pricing: { ...DEFAULT_DATA.pricing, ...saved.pricing },
+    texts:   { ...DEFAULT_DATA.texts,   ...saved.texts   },
+  }
+}
 
-function loadData(): SiteData {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed: Partial<SiteData> = JSON.parse(raw)
-      return {
-        ...DEFAULT_DATA,
-        ...parsed,
-        pricing: { ...DEFAULT_DATA.pricing, ...parsed.pricing },
-      }
-    }
-  } catch { /* ignore */ }
-  return DEFAULT_DATA
+async function fetchData(): Promise<SiteData> {
+  const res = await fetch('/api/data')
+  if (!res.ok) throw new Error('Falha ao buscar dados')
+  const json: Partial<SiteData> | null = await res.json()
+  return json ? mergeWithDefaults(json) : DEFAULT_DATA
+}
+
+async function persistData(data: SiteData): Promise<void> {
+  await fetch('/api/data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
 
 export function SiteProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<SiteData>(loadData)
+  const [data, setData] = useState<SiteData>(DEFAULT_DATA)
+
+  useEffect(() => {
+    fetchData()
+      .then(setData)
+      .catch(() => {/* mantém DEFAULT_DATA em caso de erro */})
+  }, [])
 
   function save(next: SiteData) {
     setData(next)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    persistData(next).catch(() => {/* falha silenciosa; UI já reflete o estado */})
   }
 
   return (
@@ -198,10 +211,10 @@ export function SiteProvider({ children }: { children: ReactNode }) {
       updateApartmentPhotos: (apartmentPhotos) => save({ ...data, apartmentPhotos }),
       updateBuildingPhotos:  (buildingPhotos)  => save({ ...data, buildingPhotos }),
       updateNearbyItems:     (nearbyItems)     => save({ ...data, nearbyItems }),
-      updateFaqItems:  (faqItems) => save({ ...data, faqItems }),
-      updatePricing:   (pricing) => save({ ...data, pricing }),
-      updateTexts:     (texts)   => save({ ...data, texts }),
-      updateContact:   (phone, whatsapp) => save({ ...data, contactPhone: phone, contactWhatsApp: whatsapp }),
+      updateFaqItems:        (faqItems)        => save({ ...data, faqItems }),
+      updatePricing:         (pricing)         => save({ ...data, pricing }),
+      updateTexts:           (texts)           => save({ ...data, texts }),
+      updateContact:         (phone, whatsapp) => save({ ...data, contactPhone: phone, contactWhatsApp: whatsapp }),
     }}>
       {children}
     </SiteContext.Provider>
